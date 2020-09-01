@@ -192,10 +192,12 @@ void Plane::draw(){
 
 	glColor3fv(rgb);
 	glBegin(GL_QUADS);
+	glNormal3fv(normal);
 	glVertex3fv(a);
 	glVertex3fv(b);
 	glVertex3fv(c);
 	glVertex3fv(d);
+
 	glEnd();
 
 	glPopMatrix();

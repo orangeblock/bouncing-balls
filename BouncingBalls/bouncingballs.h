@@ -16,6 +16,8 @@ signals:
 public slots:
 	void applyForcePressed();
 
+	void closeEvent(QCloseEvent* event) override;
+
 private:
 	Ui::BouncingBallsClass ui;
 };

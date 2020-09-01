@@ -23,6 +23,9 @@ public:
 	void mouseMoveEvent(QMouseEvent* event) override;
 
 	void wheelEvent(QWheelEvent* event) override;
+
+	void closeEvent(QCloseEvent* event) override;
+
 	void frame_tick();
 	void renderLoop();
 	void generateBalls();

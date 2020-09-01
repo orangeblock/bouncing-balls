@@ -42,13 +42,7 @@ void GLSimulation::initializeGL(){
 	glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);
 	glEnable(GL_COLOR_MATERIAL);
 	glShadeModel(GL_SMOOTH);
-	
-	// Set light to static position
-	GLfloat ambient[] = { 0.1f, 0.1f, 0.1f, 1.0f };
-	glLightfv(GL_LIGHT0, GL_AMBIENT, ambient);
-	GLfloat pos[] = { 1.0f, 1.0f, 1.0f, 1.0f };
-	glLightfv(GL_LIGHT0, GL_POSITION, pos);
-	
+
 	fpsTimer.setTimerType(Qt::PreciseTimer);
 	connect(&fpsTimer, &QTimer::timeout, this, &GLSimulation::frame_tick);
 	fpsTimer.start(1000);
@@ -79,6 +73,12 @@ void GLSimulation::paintGL(){
 	glRotatef(camera.rotX, 1.0, 0.0, 0.0);
 	glRotatef(camera.rotY, 0.0, 1.0, 0.0);
 	glTranslated(-camera.x, -camera.y, -camera.z);
+
+	// Set light to static position
+	GLfloat ambient[] = { 0.1f, 0.1f, 0.1f, 1.0f };
+	glLightfv(GL_LIGHT0, GL_AMBIENT, ambient);
+	GLfloat pos[] = { 0.0, 50.0f, 0.0f, 1.0f };
+	glLightfv(GL_LIGHT0, GL_POSITION, pos);
 
 	int nplanes = world.planes.size();
 	for (int i = 0; i < nplanes; ++i)
@@ -292,6 +292,10 @@ void GLSimulation::wheelEvent(QWheelEvent* event){
 	}
 }
 
+void GLSimulation::closeEvent(QCloseEvent* event) {
+	cleanup();
+}
+
 void GLSimulation::renderLoop() {
 	handleKeyobardEvents();
 	update();
@@ -318,8 +322,8 @@ void GLSimulation::generateBalls(){
 }
 
 void GLSimulation::cleanup(){
-	delete physEngine;
-	delete selected;
+	// Stop physics engine to prevent null pointer crashes during destruction
+	physEngine->stop();
 }
 
 void GLSimulation::frame_tick() {
