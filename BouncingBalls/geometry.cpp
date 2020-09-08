@@ -56,17 +56,17 @@ void Sphere::reset(){
 	forces.erase(forces.begin() + 1, forces.end());
 }
 
-void Sphere::update(double dt){
+void Sphere::update(double dt) {
 	for (int i = 0; i < forces.size(); ++i) {
-		forces[i].decay(dt);
 		if (forces[i].f <= 0.01) {
 			forces.erase(forces.begin() + i);
 			// wind back index to account for deletion
 			--i;
 			continue;
 		}
-		float fcurr = m * forces[i].f * dt;
+		float fcurr = m * forces[i].f * DAMPENING_FACTOR;
 		velocity += (fcurr * forces[i].dpc);
+		forces[i].decay();
 	}
 	pos += (dt * velocity);
 }
@@ -114,7 +114,7 @@ void Sphere::collide(Scene& scene, int idx) {
 		Plane* p = scene.planes[i].get();
 		if (p != nullptr && collisionDetection(this, p)) {
 			// Reflect velocity around hit surface normal and apply restitution coefficient
-			velocity = velocity - (1 + r) * velocity.dot(p->normal) * p->normal;
+			velocity -= (1 + r) * velocity.dot(p->normal) * p->normal;
 			
 			// Prevent merging
 			float dist = (pos - p->a).dot(p->normal);
@@ -130,7 +130,7 @@ void Sphere::collide(Scene& scene, int idx) {
 		AABB* aabb = scene.aabbs[i].get();
 		if (aabb != nullptr && collisionDetection(this, aabb)) {
 			// Reflect velocity around hit surface normal and mult by restitution factor
-			velocity = velocity - (1 + r) * velocity.dot(aabb->normal) * aabb->normal;
+			velocity -= (1 + r) * velocity.dot(aabb->normal) * aabb->normal;
 
 			// Prevent merging
 			float dist = (pos - aabb->a).dot(aabb->normal);
@@ -148,9 +148,9 @@ Force::Force(Vec3f dir, double force, double decayFactor)
 	dpc.normalize();
 }
 
-void Force::decay(double dt){
+void Force::decay(){
 	if (f > 0) {
-		f -= f * decayFactor * dt;
+		f -= f * decayFactor;
 		if (f < 0) f = 0;
 	}
 }

@@ -61,13 +61,18 @@ class Vec3f {
 	friend Vec3f operator/(Vec3f const& vec, float scalar) {
 		return Vec3f(vec.x / scalar, vec.y / scalar, vec.z / scalar);
 	}
+
+	friend QDebug operator<<(QDebug out, Vec3f const& vec) {
+		out << "(" << vec.x << "," << vec.y << "," << vec.z << ")";
+		return out;
+	}
 };
 
 class Force {
 public:
 	Force(Vec3f dir, double force, double decayFactor = 0.2f);
 
-	void decay(double dt);
+	void decay();
 
 	double f, decayFactor;
 	Vec3f dpc;
