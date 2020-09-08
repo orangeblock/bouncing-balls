@@ -29,7 +29,6 @@ public:
 	void frame_tick();
 	void renderLoop();
 	void generateBalls();
-	void cleanup();
 
 signals:
 	void massChanged(double mass);

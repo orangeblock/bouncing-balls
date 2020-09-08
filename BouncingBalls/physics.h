@@ -13,7 +13,6 @@ class PhysicsEngine : public QThread {
 		void run() override;
 
 public:
-
 	PhysicsEngine(Scene& scene, int fps = 300);
 	~PhysicsEngine() { 
 		terminate = true;
@@ -32,7 +31,9 @@ public:
 	bool stop();
 
 	void frame_tick() {
+		#ifdef DEBUG
 		qDebug() << "Physics FPS: " << frames;
+		#endif
 		frames = 0;
 	}
 

@@ -30,6 +30,16 @@ class Vec3f {
 			return *this;
 		}
 
+		Vec3f& operator+=(const Vec3f& right) {
+			x += right.x, y += right.y, z += right.z;
+			return *this;
+		}
+
+		Vec3f& operator-=(const Vec3f& right) {
+			x -= right.x, y -= right.y, z -= right.z;
+			return *this;
+		}
+
 		float x, y, z;
 
 	friend Vec3f operator-(const Vec3f& v1, const Vec3f& v2) {
@@ -84,7 +94,7 @@ public:
 
 class Sphere : public GeomObject {
 public:
-	Sphere(float x, float y, float z, float radius, float mass, float restitution = 0.8f,
+	Sphere(Vec3f& position, float radius, float mass, float restitution = 0.8f,
 		   Vec3f& velocity = Vec3f(0, 0, 0), Vec3f& color = Vec3f(1, 0.9, 0.9),
 		   Vec3f& selectedColor = Vec3f(0.9, 0.1, 0.1));
 
@@ -93,9 +103,11 @@ public:
 	void update(double dt) override;
 	void collide(Scene& scene, int idx) override;
 
-	float x, y, z;
+	Vec3f pos;
+	//float x, y, z;
 	float rad, m, r;
-	float origX, origY, origZ;
+	Vec3f origPos;
+	//float origX, origY, origZ;
 	Vec3f rgb, selectRgb;
 	bool selected;
 	std::vector<Force> forces;

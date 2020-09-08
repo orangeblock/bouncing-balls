@@ -4,20 +4,18 @@ template<class C1, class C2> bool collisionDetection(C1* obj1, C2* obj2) { retur
 
 template<> bool collisionDetection(Sphere* s, Plane* pl) {
 	// If sphere is behind plane (as defined by normal) we have a collision
-	Vec3f spos(s->x, s->y, s->z);
-	float dist = (spos - pl->a).dot(pl->normal);
+	float dist = (s->pos - pl->a).dot(pl->normal);
 	return (dist <= s->rad);
 }
 
 template<> bool collisionDetection(Sphere* s, AABB* rect) {
 	// Same as plane but also checks for rectangle boundaries
-	Vec3f spos(s->x, s->y, s->z);
-	float dist = (spos - rect->a).dot(rect->normal);
+	float dist = (s->pos - rect->a).dot(rect->normal);
 
 	// Consider collisions even if sphere has penetrated rectangle for some time.
 	// This will eventually break down if speed is too large compared to loop processing speed.
 	if (dist <= s->rad && dist >= -10 * s->rad) {
-		Vec3f p = spos + dist * (-rect->normal);
+		Vec3f p = s->pos + dist * (-rect->normal);
 		return(p.x >= rect->minX && p.x <= rect->maxX
 			&& p.y >= rect->minY && p.y <= rect->maxY
 			&& p.z >= rect->minZ && p.z <= rect->maxZ);
@@ -26,13 +24,12 @@ template<> bool collisionDetection(Sphere* s, AABB* rect) {
 }
 
 template<> bool collisionDetection(Sphere* s1, Sphere* s2) {
-	float dx = s1->x - s2->x, dy = s1->y - s2->y, dz = s1->z - s2->z, r12 = s1->rad + s2->rad;
-	return (dx * dx + dy * dy + dz * dz <= r12 * r12);
+	return (s1->pos - s2->pos).normsq() <= (s1->rad + s2->rad) * (s1->rad + s2->rad);
 }
 
-Sphere::Sphere(float x, float y, float z, float radius, float mass, float restitution, Vec3f& velocity, Vec3f& color, Vec3f& selectedColor)
-	: x(x), y(y), z(z), rad(radius), m(mass), r(restitution),
-	origX(x), origY(y), origZ(z), rgb(color), selectRgb(selectedColor), 
+Sphere::Sphere(Vec3f& position, float radius, float mass, float restitution, Vec3f& velocity, Vec3f& color, Vec3f& selectedColor)
+	: pos(position), rad(radius), m(mass), r(restitution),
+	origPos(position), rgb(color), selectRgb(selectedColor), 
 	selected(false), velocity(velocity), origVelocity(velocity)
 {
 	// add gravity by default
@@ -44,7 +41,7 @@ void Sphere::draw(){
 
 	if (selected) glColor3fv(selectRgb);
 	else glColor3fv(rgb);
-	glTranslatef(x, y, z);
+	glTranslatef(pos.x, pos.y, pos.z);
 	GLUquadricObj* qobj = gluNewQuadric();
 	gluQuadricNormals(qobj, GLU_SMOOTH);
 	gluSphere(qobj, rad, 16, 16);
@@ -54,7 +51,7 @@ void Sphere::draw(){
 }
 
 void Sphere::reset(){
-	x = origX, y = origY, z = origZ, velocity = origVelocity;
+	pos = origPos, velocity = origVelocity;
 	// Remove all forces except gravity
 	forces.erase(forces.begin() + 1, forces.end());
 }
@@ -68,15 +65,10 @@ void Sphere::update(double dt){
 			--i;
 			continue;
 		}
-
 		float fcurr = m * forces[i].f * dt;
-		velocity.x += forces[i].dpc.x * fcurr;
-		velocity.y += forces[i].dpc.y * fcurr;
-		velocity.z += forces[i].dpc.z * fcurr;
+		velocity += (fcurr * forces[i].dpc);
 	}
-	x += velocity.x * dt;
-	y += velocity.y * dt;
-	z += velocity.z * dt;
+	pos += (dt * velocity);
 }
 
 void Sphere::collide(Scene& scene, int idx) {
@@ -85,8 +77,9 @@ void Sphere::collide(Scene& scene, int idx) {
 	for (int i = idx + 1; i < nspheres; ++i) {
 		Sphere* s = scene.spheres[i].get();
 		if (s != nullptr && collisionDetection(this, s)) {
-			// Calculate projections of velocities onto force vector
-			Vec3f force(x - s->x, y - s->y, z - s->z);
+			Vec3f distVec = pos - s->pos;
+			// Calculate projections of velocities onto force vector			
+			Vec3f force = pos - s->pos;
 			force.normalize();
 			float x1_proj = force.dot(velocity);
 			Vec3f v1x = x1_proj * force;
@@ -104,19 +97,13 @@ void Sphere::collide(Scene& scene, int idx) {
 			s->velocity = v2y + (mu12 + m * cor * (v1x - v2x)) / m12;
 			
 			// Prevent merging
-			float diff = (rad + s->rad) * (rad + s->rad) - Vec3f(x - s->x, y - s->y, z - s->z).normsq();
+			float diff = (rad + s->rad) * (rad + s->rad) - distVec.normsq();
 			if (diff > 0) {
-				Vec3f dist(x - s->x, y - s->y, z - s->z);
-				dist.normalize();
+				distVec.normalize();
 
 				// Move spheres in opposite directions
-				x += (diff / 2.0) * dist.x;
-				y += (diff / 2.0) * dist.y;
-				z += (diff / 2.0) * dist.z;
-
-				s->x -= (diff / 2.0) * dist.x;
-				s->y -= (diff / 2.0) * dist.y;
-				s->z -= (diff / 2.0) * dist.z;
+				pos += (diff / 2.0) * distVec;
+				s->pos -= (diff / 2.0) * distVec;
 			}
 		}
 	}
@@ -130,12 +117,9 @@ void Sphere::collide(Scene& scene, int idx) {
 			velocity = velocity - (1 + r) * velocity.dot(p->normal) * p->normal;
 			
 			// Prevent merging
-			Vec3f spos(x, y, z);
-			float dist = (spos - p->a).dot(p->normal);
+			float dist = (pos - p->a).dot(p->normal);
 			if (dist < rad) {
-				x += (rad - dist) * p->normal.x;
-				y += (rad - dist) * p->normal.y;
-				z += (rad - dist) * p->normal.z;
+				pos += (rad - dist) * p->normal;
 			}
 		}
 	}
@@ -149,12 +133,9 @@ void Sphere::collide(Scene& scene, int idx) {
 			velocity = velocity - (1 + r) * velocity.dot(aabb->normal) * aabb->normal;
 
 			// Prevent merging
-			Vec3f spos(x, y, z);
-			float dist = (spos - aabb->a).dot(aabb->normal);
+			float dist = (pos - aabb->a).dot(aabb->normal);
 			if (dist < rad) {
-				x += (rad - dist) * aabb->normal.x;
-				y += (rad - dist) * aabb->normal.y;
-				z += (rad - dist) * aabb->normal.z;
+				pos += (rad - dist) * aabb->normal;
 			}
 		}
 	}

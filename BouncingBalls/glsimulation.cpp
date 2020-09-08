@@ -20,7 +20,7 @@ GLSimulation::GLSimulation(QWidget* parent)
 {
 	// Setup scene
 	world.planes.push_back(std::make_unique<Plane>(Plane(Vec3f(-30, 0, 30), Vec3f(30, 0, 30), Vec3f(30, 0, -30), Vec3f(-30, 0, -30), Vec3f(0.5, 0.7, 0.5))));
-	world.spheres.push_back(std::make_unique<Sphere>(Sphere(0, 10, 0, 0.2, 1)));
+	world.spheres.push_back(std::make_unique<Sphere>(Sphere(Vec3f(0, 10, 0), 0.2, 1)));
 
 	// Start the physics engine in a separate thread
 	physEngine = new PhysicsEngine(world);
@@ -148,7 +148,7 @@ void GLSimulation::keyPressEvent(QKeyEvent* event){
 	keystates[event->key()] = true;
 
 	if (event->key() == Qt::Key_Escape) {
-		cleanup();
+		physEngine->stop();
 		exit(0);
 	}
 
@@ -203,34 +203,29 @@ void GLSimulation::mousePressEvent(QMouseEvent* e){
 		lastX = e->x(), lastY = e->y();
 
 		// Check for ball selection
-		int nspheres = world.spheres.size();
-		for (int i = 0; i < nspheres; ++i) {
+		for (int i = 0; i < world.spheres.size(); ++i) {
 			Sphere* s = world.spheres[i].get();
-			if (s != nullptr) {
-				float diffX = s->x - wcoord.x, diffY = s->y - wcoord.y, diffZ = s->z - wcoord.z;
-				float d2 = diffX * diffX + diffY * diffY + diffZ * diffZ;
-				if (d2 <= (double)s->rad * s->rad + 0.02 && s != selected) {
-					if (selected != nullptr) { selected->selected = false; }
-					s->selected = true;
+			if ((s->pos - wcoord).normsq() <= s->rad * s->rad + 0.02 && s != selected) {
+				if (selected != nullptr) { selected->selected = false; }
+				s->selected = true;
 
-					// Disable global selection to prevent update due to cyclic trigger
-					selected = nullptr;
+				// Disable global selection to prevent update due to cyclic trigger
+				selected = nullptr;
 					
-					// These are emitted synchronously so we don't have race condition with the above
-					emit massChanged(s->m);
-					emit restitutionChanged(s->r);
-					emit radiusChanged(s->rad);
-					emit xChanged((s->origX + 25) * 2);
-					emit yChanged(s->origY * 5);
-					emit zChanged((s->origZ + 25) * 2);
-					emit vxChanged(s->origVelocity.x);
-					emit vyChanged(s->origVelocity.y);
-					emit vzChanged(s->origVelocity.z);
+				// These are emitted synchronously so we don't have race condition with the above
+				emit massChanged(s->m);
+				emit restitutionChanged(s->r);
+				emit radiusChanged(s->rad);
+				emit xChanged((s->origPos.x + 25) * 2);
+				emit yChanged(s->origPos.y * 5);
+				emit zChanged((s->origPos.z + 25) * 2);
+				emit vxChanged(s->origVelocity.x);
+				emit vyChanged(s->origVelocity.y);
+				emit vzChanged(s->origVelocity.z);
 					
-					// Update selection
-					selected = s;
-					break;
-				}
+				// Update selection
+				selected = s;
+				break;
 			}
 		}
 	} else if (e->button() == Qt::RightButton) {
@@ -238,6 +233,7 @@ void GLSimulation::mousePressEvent(QMouseEvent* e){
 		float x = camera.x + float(sin(camera.rotY * RAD_PER_DEG)) * 3;
 		float y = camera.y - float(sin(camera.rotX * RAD_PER_DEG)) * 3;
 		float z = camera.z - float(cos(camera.rotY * RAD_PER_DEG)) * 3;
+		Vec3f newPos(x, y, z);
 			
 		// Check if new position does not collide with existing balls
 		bool foundCollision = false;
@@ -245,9 +241,7 @@ void GLSimulation::mousePressEvent(QMouseEvent* e){
 		for (int i = 0; i < nspheres; ++i) {
 			Sphere* s = world.spheres[i].get();
 			if (s != nullptr) {
-				float diffX = s->x - x, diffY = s->y - y, diffZ = s->z - z;
-				float d2 = diffX * diffX + diffY * diffY + diffZ * diffZ;
-				if (d2 <= (double)s->rad * s->rad + 0.5 * 0.5 + 0.02) {
+				if ((s->pos - newPos).normsq() <= s->rad * s->rad + 0.5 * 0.5 + 0.02) {
 					foundCollision = true;
 					break;
 				}
@@ -257,9 +251,9 @@ void GLSimulation::mousePressEvent(QMouseEvent* e){
 			if (selected != nullptr) {
 				// use values of currently selected ball
 				world.spheres.push_back(std::make_unique<Sphere>(
-					Sphere(x, y, z, selected->rad, selected->m, selected->r, selected->origVelocity)));
+					Sphere(Vec3f(x, y, z), selected->rad, selected->m, selected->r, selected->origVelocity)));
 			} else {
-				world.spheres.push_back(std::make_unique<Sphere>(Sphere(x, y, z, 0.2, 0.5)));
+				world.spheres.push_back(std::make_unique<Sphere>(Sphere(Vec3f(x, y, z), 0.2, 0.5)));
 			}
 			
 		}
@@ -293,7 +287,7 @@ void GLSimulation::wheelEvent(QWheelEvent* event){
 }
 
 void GLSimulation::closeEvent(QCloseEvent* event) {
-	cleanup();
+	physEngine->stop();
 }
 
 void GLSimulation::renderLoop() {
@@ -314,20 +308,17 @@ void GLSimulation::generateBalls(){
 				float vx = -10.0 + (rand() % 2000) / 100.0;
 				float vy = -10.0 + (rand() % 1000) / 100.0;
 				float vz = -10.0 + (rand() % 2000) / 100.0;
-				world.spheres.push_back(std::make_unique<Sphere>(Sphere(x, y, z, 0.2, mass, restitution, Vec3f(vx, vy, vz))));
+				world.spheres.push_back(std::make_unique<Sphere>(Sphere(Vec3f(x, y, z), 0.2, mass, restitution, Vec3f(vx, vy, vz))));
 			}
 		}
 	}
 	if(physRunning) physEngine->flip();
 }
 
-void GLSimulation::cleanup(){
-	// Stop physics engine to prevent null pointer crashes during destruction
-	physEngine->stop();
-}
-
 void GLSimulation::frame_tick() {
+	#ifdef DEBUG
 	qDebug() << "FPS: " << frames;
+	#endif
 	frames = 0;
 }
 
@@ -352,9 +343,9 @@ void GLSimulation::updateRadius(double radius){
 void GLSimulation::updateX(int x){
 	if (selected != nullptr) {
 		float newX = (x - 50) * 0.5f;
-		selected->origX = newX;
+		selected->origPos.x = newX;
 		if (!physEngine->running) {
-			selected->x = newX;
+			selected->pos.x = newX;
 		}
 	}
 }
@@ -362,9 +353,9 @@ void GLSimulation::updateX(int x){
 void GLSimulation::updateY(int y){
 	float newY = y * 0.2f;
 	if (selected != nullptr && newY >= selected->rad) {
-		selected->origY = newY;
+		selected->origPos.y = newY;
 		if (!physEngine->running) {
-			selected->y = newY;
+			selected->pos.y = newY;
 		}
 	}
 }
@@ -372,9 +363,9 @@ void GLSimulation::updateY(int y){
 void GLSimulation::updateZ(int z){
 	if (selected != nullptr) {
 		float newZ = (z - 50) * 0.5f;
-		selected->origZ = newZ;
+		selected->origPos.z = newZ;
 		if (!physEngine->running) {
-			selected->z = newZ;
+			selected->pos.z = newZ;
 		}
 	}
 }
