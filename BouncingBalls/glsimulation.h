@@ -61,6 +61,7 @@ public slots:
 	void clearAllButtonPressed();
 	void addExternalForce(Vec3f& dir, float power, float decay);
 	void switchWallsButtonPressed(bool state);
+	void randomizeButtonPressed();
 
 private:
 	int fps, frames;

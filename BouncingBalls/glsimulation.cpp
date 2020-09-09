@@ -456,3 +456,7 @@ void GLSimulation::switchWallsButtonPressed(bool state){
 		if (physRunning) physEngine->flip();
 	}
 }
+
+void GLSimulation::randomizeButtonPressed(){
+	generateBalls();
+}
