@@ -115,8 +115,11 @@
     <QtMoc Include="glsimulation.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="camera.h" />
     <ClInclude Include="constants.h" />
+    <ClInclude Include="force.h" />
     <ClInclude Include="geometry.h" />
+    <ClInclude Include="vector.h" />
     <QtMoc Include="physics.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

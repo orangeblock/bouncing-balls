@@ -2,6 +2,7 @@
 #include <QOpenGLWidget>
 #include <QOpenGLFunctions>
 #include "physics.h"
+#include "camera.h"
 
 class GLSimulation : public QOpenGLWidget, public QOpenGLFunctions {
 	Q_OBJECT

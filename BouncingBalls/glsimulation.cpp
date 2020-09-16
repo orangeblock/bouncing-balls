@@ -61,12 +61,13 @@ void GLSimulation::resizeGL(int w, int h){
 
 void GLSimulation::paintGL(){
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
 	// Set background color
 	glClearColor(117.0f / 255.0f, 1.0f, 250.0f / 255.0f, 1.0f);
 
 	glLoadIdentity();
 
-	// scale with zoom factor
+	// Scale with zoom factor
 	glScalef(zoom, zoom, 1.0f);
 
 	// Move scene relative to camera position
@@ -95,27 +96,33 @@ void GLSimulation::paintGL(){
 
 void GLSimulation::handleKeyobardEvents(){
 	if (keystates[Qt::Key_W]) {
+		// Move forward
 		camera.x += float(sin(camera.rotY * RAD_PER_DEG)) * camera.v;
 		camera.y -= float(sin(camera.rotX * RAD_PER_DEG)) * camera.v;
 		camera.z -= float(cos(camera.rotY * RAD_PER_DEG)) * camera.v;
 	}
 	if (keystates[Qt::Key_S]) {
+		// Move backwards
 		camera.x -= float(sin(camera.rotY * RAD_PER_DEG)) * camera.v;
 		camera.y += float(sin(camera.rotX * RAD_PER_DEG)) * camera.v;
 		camera.z += float(cos(camera.rotY * RAD_PER_DEG)) * camera.v;
 	}
 	if (keystates[Qt::Key_A]) {
+		// Move left
 		camera.x -= float(cos(camera.rotY * RAD_PER_DEG)) * camera.v;
 		camera.z -= float(sin(camera.rotY * RAD_PER_DEG)) * camera.v;
 	}
 	if (keystates[Qt::Key_D]) {
+		// Move right
 		camera.x += float(cos(camera.rotY * RAD_PER_DEG)) * camera.v;
 		camera.z += float(sin(camera.rotY * RAD_PER_DEG)) * camera.v;
 	}
 	if (keystates[Qt::Key_Q]) {
+		// Move down
 		camera.y -= camera.v;
 	}
 	if (keystates[Qt::Key_E]) {
+		// Move up
 		camera.y += camera.v;
 	}
 }
@@ -148,20 +155,24 @@ void GLSimulation::keyPressEvent(QKeyEvent* event){
 	keystates[event->key()] = true;
 
 	if (event->key() == Qt::Key_Escape) {
+		// Exit
 		physEngine->stop();
 		exit(0);
 	}
 
 	if (event->key() == Qt::Key_Space) {
+		// Pause/unpause simulation
 		physEngine->flip();
 	}
 
 	if (event->key() == Qt::Key_R) {
+		// Reset all simulated objects
 		for (int i = 0; i < world.spheres.size(); ++i)
 			world.spheres[i]->reset();
 	}
 
 	if (event->key() == Qt::Key_Right) {
+		// Step forward by one frame
 		physEngine->step();
 	}
 
@@ -171,10 +182,12 @@ void GLSimulation::keyPressEvent(QKeyEvent* event){
 	}
 
 	if (event->key() == Qt::Key_G) {
+		// Generate multiple balls with randomized properties
 		generateBalls();
 	}
 
 	if (event->key() == Qt::Key_Backspace) {
+		// Delete selected ball
 		if (selected != nullptr) {
 			int nspheres = world.spheres.size();
 			for (int i = 0; i < nspheres; ++i) {
@@ -199,13 +212,14 @@ void GLSimulation::mousePressEvent(QMouseEvent* e){
 	keystates[e->button()] = true;
 
 	if (e->button() == Qt::LeftButton) {
+		// Select ball
 		Vec3f wcoord(mouseToWorld(e->x(), e->y()));
 		lastX = e->x(), lastY = e->y();
 
 		// Check for ball selection
 		for (int i = 0; i < world.spheres.size(); ++i) {
 			Sphere* s = world.spheres[i].get();
-			if ((s->pos - wcoord).normsq() <= s->rad * s->rad + 0.02 && s != selected) {
+			if ((s->pos - wcoord).normsq() <= (double)s->rad * s->rad + 0.02 && s != selected) {
 				if (selected != nullptr) { selected->selected = false; }
 				s->selected = true;
 
@@ -229,6 +243,8 @@ void GLSimulation::mousePressEvent(QMouseEvent* e){
 			}
 		}
 	} else if (e->button() == Qt::RightButton) {
+		// Create a new ball at cursor position
+
 		// Coordinates for new ball
 		float x = camera.x + float(sin(camera.rotY * RAD_PER_DEG)) * 3;
 		float y = camera.y - float(sin(camera.rotX * RAD_PER_DEG)) * 3;
@@ -266,6 +282,7 @@ void GLSimulation::mouseReleaseEvent(QMouseEvent* e){
 
 void GLSimulation::mouseMoveEvent(QMouseEvent* e){
 	if (keystates[Qt::LeftButton]) {
+		// Turn camera
 		int diffX = (e->x() - lastX) * 0.2;
 		int diffY = (e->y() - lastY) * 0.2;
 		lastX = e->x(), lastY = e->y();
@@ -450,10 +467,7 @@ void GLSimulation::switchWallsButtonPressed(bool state){
 		// front wall
 		world.aabbs.push_back(std::make_unique<AABB>(AABB(Vec3f(-30, 0, 30), Vec3f(-30, 15, 30), Vec3f(30, 15, 30), Vec3f(30, 0, 30), Vec3f(0.5, 0.4, 0.8))));
 	} else {
-		bool physRunning = physEngine->running;
-		if (physRunning) physEngine->stop();
 		world.aabbs.clear();
-		if (physRunning) physEngine->flip();
 	}
 }
 

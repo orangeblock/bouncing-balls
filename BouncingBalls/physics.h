@@ -16,7 +16,7 @@ public:
 	PhysicsEngine(Scene& scene, int fps = 300);
 	~PhysicsEngine() { 
 		terminate = true;
-		// Hacky way to ensure loop exits by waiting a bit
+		// Ensure loop exits by waiting for a bit
 		thread()->msleep(100); 
 	}
 

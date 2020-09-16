@@ -141,26 +141,6 @@ void Sphere::collide(Scene& scene, int idx) {
 	}
 }
 
-Force::Force(Vec3f dir, double force, double decayFactor)
-	: dpc(dir), f(force), decayFactor(decayFactor)
-{
-	if (decayFactor < 0) decayFactor = 0;
-	dpc.normalize();
-}
-
-void Force::decay(){
-	if (f > 0) {
-		f -= f * decayFactor;
-		if (f < 0) f = 0;
-	}
-}
-
-void Vec3f::normalize(){
-	float l = norm();
-	if (l > 0)
-		x /= l, y /= l, z /= l;
-}
-
 Plane::Plane(Vec3f& a, Vec3f& b, Vec3f& c, Vec3f& d, Vec3f& color)
 	: a(a), b(b), c(c), d(d), rgb(color) 
 {
